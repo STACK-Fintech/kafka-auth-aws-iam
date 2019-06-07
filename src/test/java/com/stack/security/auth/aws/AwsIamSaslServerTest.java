@@ -53,7 +53,7 @@ public class AwsIamSaslServerTest {
     jaasConfig.addEntry("jaasContext", AwsIamLoginModule.class.getName(), options);
     JaasContext jaasContext = new JaasContext("jaasContext", JaasContext.Type.SERVER, jaasConfig, null);
     AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler();
-    callbackHandler.configure(null, "AWS_IAM", jaasContext.configurationEntries());
+    callbackHandler.configure(null, "AWS-IAM", jaasContext.configurationEntries());
     saslServer = new AwsIamSaslServer(callbackHandler);
   }
 
@@ -98,11 +98,11 @@ public class AwsIamSaslServerTest {
     e = assertThrows(SaslAuthenticationException.class,
         () -> saslServer.evaluateResponse(String.format("%s%s%s%s%s%s%s%s%s%s%s", ARN, nul, ARN, nul, AWS_ACCESS_KEY_ID,
             nul, AWS_SECRET_ACCESS_KEY, nul, "s", nul, "q").getBytes(StandardCharsets.UTF_8)));
-    assertEquals("Invalid SASL/AWS_IAM response: expected 4 or 5 tokens, got 6", e.getMessage());
+    assertEquals("Invalid SASL/AWS-IAM response: expected 4 or 5 tokens, got 6", e.getMessage());
 
     e = assertThrows(SaslAuthenticationException.class, () -> saslServer.evaluateResponse(
         String.format("%s%s%s%s", ARN, nul, ARN, nul, AWS_ACCESS_KEY_ID, nul).getBytes(StandardCharsets.UTF_8)));
-    assertEquals("Invalid SASL/AWS_IAM response: expected 4 or 5 tokens, got 3", e.getMessage());
+    assertEquals("Invalid SASL/AWS-IAM response: expected 4 or 5 tokens, got 3", e.getMessage());
   }
 
   @Test

@@ -98,7 +98,7 @@ public class FakeJaasConfig extends Configuration {
   private static String loginModule(String mechanism) {
     String loginModule;
     switch (mechanism) {
-    case "AWS_IAM":
+    case "AWS-IAM":
       loginModule = AwsIamLoginModule.class.getName();
       break;
     default:
@@ -118,7 +118,7 @@ public class FakeJaasConfig extends Configuration {
   public static Map<String, Object> defaultServerOptions(String mechanism) {
     Map<String, Object> options = new HashMap<>();
     switch (mechanism) {
-    case "AWS_IAM":
+    case "AWS-IAM":
       options.put(AWS_ACCOUNT_ID, AWS_ACCOUNT_ID_VALUE);
       break;
     default:

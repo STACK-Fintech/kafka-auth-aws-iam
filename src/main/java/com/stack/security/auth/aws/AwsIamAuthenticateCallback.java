@@ -3,7 +3,7 @@ package com.stack.security.auth.aws;
 import javax.security.auth.callback.Callback;
 
 /*
- * Authentication callback for SASL/AWS_IAM authentication. Callback handler must
+ * Authentication callback for SASL/AWS-IAM authentication. Callback handler must
  * set authenticated flag to true if the client provided password in the callback
  * matches the expected password.
  */
@@ -31,21 +31,21 @@ public class AwsIamAuthenticateCallback implements Callback {
   }
 
   /**
-   * Returns the AWS Access Key ID provided by the client during SASL/AWS_IAM
+   * Returns the AWS Access Key ID provided by the client during SASL/AWS-IAM
    */
   public char[] accessKeyId() {
     return accessKeyId;
   }
 
   /**
-   * Returns the AWS Secret Access Key provided by the client during SASL/AWS_IAM
+   * Returns the AWS Secret Access Key provided by the client during SASL/AWS-IAM
    */
   public char[] secretAccessKey() {
     return secretAccessKey;
   }
 
   /**
-   * Returns the AWS Session Token provided by the client during SASL/AWS_IAM
+   * Returns the AWS Session Token provided by the client during SASL/AWS-IAM
    */
   public char[] sessionToken() {
     return sessionToken;

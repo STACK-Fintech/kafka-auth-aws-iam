@@ -18,14 +18,14 @@ import org.apache.kafka.common.errors.SaslAuthenticationException;
 import com.stack.security.auth.aws.AwsIamAuthenticateCallback;
 
 /**
- * Simple SaslServer implementation for SASL/AWS_IAM. Checks the provided AWS
+ * Simple SaslServer implementation for SASL/AWS-IAM. Checks the provided AWS
  * credentials against the AWS STS service and compares the returned identity
  * against the one provided by the user, as well as the allowed AWS Account to
  * authenticate.
  */
 public class AwsIamSaslServer implements SaslServer {
 
-  public static final String AWS_IAM_MECHANISM = "AWS_IAM";
+  public static final String AWS_IAM_MECHANISM = "AWS-IAM";
 
   private final CallbackHandler callbackHandler;
   private boolean complete;
@@ -125,7 +125,7 @@ public class AwsIamSaslServer implements SaslServer {
 
     if (tokens.size() < 4 || tokens.size() > 5)
       throw new SaslAuthenticationException(
-          "Invalid SASL/AWS_IAM response: expected 4 or 5 tokens, got " + tokens.size());
+          "Invalid SASL/AWS-IAM response: expected 4 or 5 tokens, got " + tokens.size());
 
     return tokens;
   }
@@ -180,7 +180,7 @@ public class AwsIamSaslServer implements SaslServer {
 
       if (!AWS_IAM_MECHANISM.equals(mechanism))
         throw new SaslException(
-            String.format("Mechanism \'%s\' is not supported. Only AWS_IAM is supported.", mechanism));
+            String.format("Mechanism \'%s\' is not supported. Only AWS-IAM is supported.", mechanism));
 
       return new AwsIamSaslServer(cbh);
     }

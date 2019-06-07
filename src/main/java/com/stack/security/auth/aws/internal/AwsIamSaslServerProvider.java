@@ -11,7 +11,7 @@ public class AwsIamSaslServerProvider extends Provider {
 
   @SuppressWarnings("deprecation")
   protected AwsIamSaslServerProvider() {
-    super("SASL/AWS_IAM Server Provider", 1.0, "SASL/AWS_IAM Server Provider for Kafka");
+    super("SASL/AWS-IAM Server Provider", 1.0, "SASL/AWS-IAM Server Provider for Kafka");
     put("SaslServerFactory." + AwsIamSaslServer.AWS_IAM_MECHANISM, AwsIamSaslServerFactory.class.getName());
   }
 
