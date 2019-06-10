@@ -43,10 +43,10 @@ public class AwsIamSaslServerTest {
 
   static final String FAKE_ARN = "arn:aws:iam::000000000000:user/NotARealUser";
   // These credentials have no access to anything, and are purely for testing!
-  static final String ARN = "arn:aws:iam::315923181744:user/TestUser";
-  static final String AWS_ACCESS_KEY_ID = "AKIAUTDT5GCYBPMQJFWO";
-  static final String AWS_SECRET_ACCESS_KEY = "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";
-  static final String AWS_ACCOUNT_ID = "315923181744";
+  static final String ARN = "arn:aws:iam::000000000000:user/TestUser";
+  static final String AWS_ACCESS_KEY_ID = "<fakeKeyId>";
+  static final String AWS_SECRET_ACCESS_KEY = "<fakeSecretKey>";
+  static final String AWS_ACCOUNT_ID = "000000000000";
 
   @BeforeAll
   public static void setUp() {
