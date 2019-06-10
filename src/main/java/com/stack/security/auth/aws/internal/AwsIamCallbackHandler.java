@@ -34,8 +34,10 @@ import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.auth.BasicSessionCredentials;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
+import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
 import com.stack.security.auth.aws.AwsIamAuthenticateCallback;
 import com.stack.security.auth.aws.AwsIamLoginModule;
 
@@ -82,7 +84,7 @@ public class AwsIamCallbackHandler implements AuthenticateCallbackHandler {
     } else {
       awsCreds = new BasicAWSCredentials(accessKeyIdString, secretAccessKeyString);
     }
-    var stsService = AWSSecurityTokenServiceClientBuilder.standard()
+    AWSSecurityTokenService stsService = AWSSecurityTokenServiceClientBuilder.standard()
         .withCredentials(new AWSStaticCredentialsProvider(awsCreds)).build();
 
     // As an added measure of safety, the server can specify what AWS Account ID it
@@ -92,8 +94,8 @@ public class AwsIamCallbackHandler implements AuthenticateCallbackHandler {
 
     // Check the credentials with AWS STS and GetCallerIdentity.
 
-    var request = new GetCallerIdentityRequest();
-    var result = stsService.getCallerIdentity(request);
+    GetCallerIdentityRequest request = new GetCallerIdentityRequest();
+    GetCallerIdentityResult result = stsService.getCallerIdentity(request);
 
     // Both the ARN returned by the credentials, and the configured account ID need
     // to match!

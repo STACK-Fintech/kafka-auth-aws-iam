@@ -24,8 +24,11 @@ import java.util.HashMap;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
+import com.amazonaws.services.securitytoken.model.Credentials;
 import com.amazonaws.services.securitytoken.model.GetSessionTokenRequest;
+import com.amazonaws.services.securitytoken.model.GetSessionTokenResult;
 import com.stack.security.auth.aws.internal.AwsIamCallbackHandler;
 import com.stack.security.auth.aws.internal.AwsIamSaslServer;
 import com.stack.security.authenticator.FakeJaasConfig;
@@ -48,12 +51,12 @@ public class AwsIamSaslServerTest {
   @BeforeAll
   public static void setUp() {
     FakeJaasConfig jaasConfig = new FakeJaasConfig();
-    var options = new HashMap<String, Object>();
+    HashMap<String, Object> options = new HashMap<String, Object>();
     options.put("aws_account_id", AWS_ACCOUNT_ID);
     jaasConfig.addEntry("jaasContext", AwsIamLoginModule.class.getName(), options);
     JaasContext jaasContext = new JaasContext("jaasContext", JaasContext.Type.SERVER, jaasConfig, null);
     AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler();
-    callbackHandler.configure(null, "AWS-IAM", jaasContext.configurationEntries());
+    callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
     saslServer = new AwsIamSaslServer(callbackHandler);
   }
 
@@ -98,11 +101,11 @@ public class AwsIamSaslServerTest {
     e = assertThrows(SaslAuthenticationException.class,
         () -> saslServer.evaluateResponse(String.format("%s%s%s%s%s%s%s%s%s%s%s", ARN, nul, ARN, nul, AWS_ACCESS_KEY_ID,
             nul, AWS_SECRET_ACCESS_KEY, nul, "s", nul, "q").getBytes(StandardCharsets.UTF_8)));
-    assertEquals("Invalid SASL/AWS-IAM response: expected 4 or 5 tokens, got 6", e.getMessage());
+    assertEquals("Invalid SASL/AWS response: expected 4 or 5 tokens, got 6", e.getMessage());
 
     e = assertThrows(SaslAuthenticationException.class, () -> saslServer.evaluateResponse(
         String.format("%s%s%s%s", ARN, nul, ARN, nul, AWS_ACCESS_KEY_ID, nul).getBytes(StandardCharsets.UTF_8)));
-    assertEquals("Invalid SASL/AWS-IAM response: expected 4 or 5 tokens, got 3", e.getMessage());
+    assertEquals("Invalid SASL/AWS response: expected 4 or 5 tokens, got 3", e.getMessage());
   }
 
   @Test
@@ -118,12 +121,12 @@ public class AwsIamSaslServerTest {
 
   @Test
   public void authorizationSuccessWithValidKeysAndSession() throws Exception {
-    var awsCreds = new BasicAWSCredentials(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY);
-    var stsService = AWSSecurityTokenServiceClientBuilder.standard()
+    BasicAWSCredentials awsCreds = new BasicAWSCredentials(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY);
+    AWSSecurityTokenService stsService = AWSSecurityTokenServiceClientBuilder.standard()
         .withCredentials(new AWSStaticCredentialsProvider(awsCreds)).build();
     GetSessionTokenRequest request = new GetSessionTokenRequest();
-    var sessionTokenResult = stsService.getSessionToken(request);
-    var creds = sessionTokenResult.getCredentials();
+    GetSessionTokenResult sessionTokenResult = stsService.getSessionToken(request);
+    Credentials creds = sessionTokenResult.getCredentials();
     byte[] nextChallenge = saslServer.evaluateResponse(
         saslMessage(ARN, ARN, creds.getAccessKeyId(), creds.getSecretAccessKey(), creds.getSessionToken()));
     assertEquals(0, nextChallenge.length);

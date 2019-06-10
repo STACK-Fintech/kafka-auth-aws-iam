@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
@@ -15,24 +16,29 @@ import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslServerFactory;
 
 import org.apache.kafka.common.errors.SaslAuthenticationException;
+import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler;
+
 import com.stack.security.auth.aws.AwsIamAuthenticateCallback;
 
 /**
- * Simple SaslServer implementation for SASL/AWS-IAM. Checks the provided AWS
+ * Simple SaslServer implementation for SASL/AWS. Checks the provided AWS
  * credentials against the AWS STS service and compares the returned identity
  * against the one provided by the user, as well as the allowed AWS Account to
  * authenticate.
  */
 public class AwsIamSaslServer implements SaslServer {
 
-  public static final String AWS_IAM_MECHANISM = "AWS-IAM";
+  public static final String AWS_MECHANISM = "AWS";
 
-  private final CallbackHandler callbackHandler;
+  private final AuthenticateCallbackHandler callbackHandler;
   private boolean complete;
   private String authorizationId;
 
   public AwsIamSaslServer(CallbackHandler callbackHandler) {
-    this.callbackHandler = callbackHandler;
+    if (!(Objects.requireNonNull(callbackHandler) instanceof AuthenticateCallbackHandler))
+      throw new IllegalArgumentException(String.format("Callback handler must be castable to %s: %s",
+          AuthenticateCallbackHandler.class.getName(), callbackHandler.getClass().getName()));
+    this.callbackHandler = (AuthenticateCallbackHandler) callbackHandler;
   }
 
   /**
@@ -96,6 +102,7 @@ public class AwsIamSaslServer implements SaslServer {
     try {
       callbackHandler.handle(new Callback[] { nameCallback, authenticateCallback });
     } catch (Throwable e) {
+      e.printStackTrace(System.out);
       throw new SaslAuthenticationException("Authentication failed: credentials for user could not be verified", e);
     }
     if (!authenticateCallback.authenticated())
@@ -124,8 +131,7 @@ public class AwsIamSaslServer implements SaslServer {
     }
 
     if (tokens.size() < 4 || tokens.size() > 5)
-      throw new SaslAuthenticationException(
-          "Invalid SASL/AWS-IAM response: expected 4 or 5 tokens, got " + tokens.size());
+      throw new SaslAuthenticationException("Invalid SASL/AWS response: expected 4 or 5 tokens, got " + tokens.size());
 
     return tokens;
   }
@@ -139,7 +145,7 @@ public class AwsIamSaslServer implements SaslServer {
 
   @Override
   public String getMechanismName() {
-    return AWS_IAM_MECHANISM;
+    return AWS_MECHANISM;
   }
 
   @Override
@@ -178,9 +184,8 @@ public class AwsIamSaslServer implements SaslServer {
     public SaslServer createSaslServer(String mechanism, String protocol, String serverName, Map<String, ?> props,
         CallbackHandler cbh) throws SaslException {
 
-      if (!AWS_IAM_MECHANISM.equals(mechanism))
-        throw new SaslException(
-            String.format("Mechanism \'%s\' is not supported. Only AWS-IAM is supported.", mechanism));
+      if (!AWS_MECHANISM.equals(mechanism))
+        throw new SaslException(String.format("Mechanism \'%s\' is not supported. Only AWS is supported.", mechanism));
 
       return new AwsIamSaslServer(cbh);
     }
@@ -188,12 +193,12 @@ public class AwsIamSaslServer implements SaslServer {
     @Override
     public String[] getMechanismNames(Map<String, ?> props) {
       if (props == null)
-        return new String[] { AWS_IAM_MECHANISM };
+        return new String[] { AWS_MECHANISM };
       String noPlainText = (String) props.get(Sasl.POLICY_NOPLAINTEXT);
       if ("true".equals(noPlainText))
         return new String[] {};
       else
-        return new String[] { AWS_IAM_MECHANISM };
+        return new String[] { AWS_MECHANISM };
     }
   }
 }

@@ -1,6 +1,7 @@
 package com.stack.security.auth.aws;
 
 import java.util.Map;
+import java.util.Set;
 
 import javax.security.auth.Subject;
 import javax.security.auth.callback.CallbackHandler;
@@ -23,8 +24,8 @@ public class AwsIamLoginModule implements LoginModule {
   public void initialize(Subject subject, CallbackHandler callbackHandler, Map<String, ?> sharedState,
       Map<String, ?> options) {
 
-    var publicCredentials = subject.getPublicCredentials();
-    var privateCredentials = subject.getPrivateCredentials();
+    Set<Object> publicCredentials = subject.getPublicCredentials();
+    Set<Object> privateCredentials = subject.getPrivateCredentials();
     String arn = (String) options.get(ARN);
     if (arn != null) {
       publicCredentials.add(arn);
