@@ -43,6 +43,18 @@ import com.stack.security.auth.aws.AwsIamLoginModule;
 
 public class AwsIamCallbackHandler implements AuthenticateCallbackHandler {
 
+  private AWSSecurityTokenService service;
+
+  public AwsIamCallbackHandler(AWSSecurityTokenService service) {
+    // Allow injection of STS instance for testing
+    if (service != null) {
+      this.service = service;
+    }
+  }
+
+  public AwsIamCallbackHandler() {
+  }
+
   private static final String AWS_ACCOUNT_ID = "aws_account_id";
   private List<AppConfigurationEntry> jaasConfigEntries;
 
@@ -84,9 +96,10 @@ public class AwsIamCallbackHandler implements AuthenticateCallbackHandler {
     } else {
       awsCreds = new BasicAWSCredentials(accessKeyIdString, secretAccessKeyString);
     }
-    AWSSecurityTokenService stsService = AWSSecurityTokenServiceClientBuilder.standard()
-        .withCredentials(new AWSStaticCredentialsProvider(awsCreds)).build();
-
+    if (this.service == null) {
+      this.service = AWSSecurityTokenServiceClientBuilder.standard()
+          .withCredentials(new AWSStaticCredentialsProvider(awsCreds)).build();
+    }
     // As an added measure of safety, the server can specify what AWS Account ID it
     // expects to see as a part of the caller's identity.
     String expectedAwsAccountId = JaasContext.configEntryOption(jaasConfigEntries, AWS_ACCOUNT_ID,
@@ -95,7 +108,7 @@ public class AwsIamCallbackHandler implements AuthenticateCallbackHandler {
     // Check the credentials with AWS STS and GetCallerIdentity.
 
     GetCallerIdentityRequest request = new GetCallerIdentityRequest();
-    GetCallerIdentityResult result = stsService.getCallerIdentity(request);
+    GetCallerIdentityResult result = this.service.getCallerIdentity(request);
 
     // Both the ARN returned by the credentials, and the configured account ID need
     // to match!
