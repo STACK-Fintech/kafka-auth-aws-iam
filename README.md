@@ -20,9 +20,21 @@ successfully authenticate. This is to prevent a random user from generating AWS 
 credentials from a totally separate account and connecting to your Kafka brokers with default ACL
 permissions.
 
-Finally, add the JAAS configuration file as an argument for the `KAFKA_OPTS` environment variable
+Next, add the JAAS configuration file as an argument for the `KAFKA_OPTS` environment variable
 of your broker(s):
 ```
 export KAFKA_OPTS="-Djava.security.auth.login.config=./config/server-jaas.conf"
 bin/kafka-server-start.sh config/server.properties
+```
+
+Last, in server.properties, you'll need to add an entry for the callback handler class.
+Without this entry, the `SaslServerCallbackhandler` will be used, which will fail!
+
+```
+# server.properties
+
+# Should follow the format: listener.name {listener}.aws.sasl.server.callback.handler=com.stack.security.auth.aws.internal.AwsIamCallbackHandler
+
+# So, for SASL_SSL, it should be:
+listener.name.sasl_ssl.aws.sasl.server.callback.handler.class=com.stack.security.auth.aws.internal.AwsIamCallbackHandler
 ```
