@@ -16,34 +16,31 @@
  */
 package com.stack.security.auth.aws;
 
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.stubbing.OngoingStubbing;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
-import com.amazonaws.services.securitytoken.model.Credentials;
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
-import com.amazonaws.services.securitytoken.model.GetSessionTokenRequest;
-import com.amazonaws.services.securitytoken.model.GetSessionTokenResult;
 import com.stack.security.auth.aws.internal.AwsIamCallbackHandler;
 import com.stack.security.auth.aws.internal.AwsIamSaslServer;
 import com.stack.security.authenticator.FakeJaasConfig;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.any;
 
 import org.apache.kafka.common.errors.SaslAuthenticationException;
 import org.apache.kafka.common.security.JaasContext;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public class AwsIamSaslServerTest {
@@ -58,6 +55,9 @@ public class AwsIamSaslServerTest {
   static final String AWS_ACCOUNT_ID = "000000000000";
 
   // Static mocks for testing
+  static AWSSecurityTokenServiceClientBuilder builder = mock(AWSSecurityTokenServiceClientBuilder.class,
+      Mockito.RETURNS_DEEP_STUBS);
+  static AWSSecurityTokenService sts;
 
   @BeforeAll
   public static void setUp() {
@@ -66,24 +66,13 @@ public class AwsIamSaslServerTest {
     options.put("aws_account_id", AWS_ACCOUNT_ID);
     jaasConfig.addEntry("jaasContext", AwsIamLoginModule.class.getName(), options);
     jaasContext = new JaasContext("jaasContext", JaasContext.Type.SERVER, jaasConfig, null);
-
+    sts = mock(AWSSecurityTokenService.class);
+    when(builder.withCredentials(any(AWSStaticCredentialsProvider.class)).build()).thenReturn(sts);
   }
-
-  // @Test
-  // public void noAuthorizationIdSpecified() throws Exception {
-  // AWSSecurityTokenService fakeSts = mock(AWSSecurityTokenService.class);
-  // AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(fakeSts);
-  // callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
-  // AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
-  // byte[] nextChallenge = saslServer.evaluateResponse(saslMessage("", ARN,
-  // AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY));
-  // assertEquals(0, nextChallenge.length);
-  // }
 
   @Test
   public void emptyTokens() {
-    AWSSecurityTokenService fakeSts = mock(AWSSecurityTokenService.class);
-    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(fakeSts);
+    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
     AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
     Exception e = assertThrows(SaslAuthenticationException.class,
@@ -127,42 +116,39 @@ public class AwsIamSaslServerTest {
 
   @Test
   public void authorizationSucceedsWithValidKeys() {
-    AWSSecurityTokenService fakeSts = mock(AWSSecurityTokenService.class);
-    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(fakeSts);
+    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
     AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
-    GetCallerIdentityResult fakeStsResult = mock(GetCallerIdentityResult.class);
-    when(fakeSts.getCallerIdentity(any(GetCallerIdentityRequest.class))).thenReturn(fakeStsResult);
-    when(fakeStsResult.getAccount()).thenReturn(AWS_ACCOUNT_ID);
-    when(fakeStsResult.getArn()).thenReturn(ARN);
+    GetCallerIdentityResult stsResult = mock(GetCallerIdentityResult.class);
+    when(sts.getCallerIdentity(any(GetCallerIdentityRequest.class))).thenReturn(stsResult);
+    when(stsResult.getAccount()).thenReturn(AWS_ACCOUNT_ID);
+    when(stsResult.getArn()).thenReturn(ARN);
 
     saslServer.evaluateResponse(saslMessage(ARN, ARN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY));
   }
 
   @Test
   public void authorizationFailsForWrongAuthorizationId() {
-    AWSSecurityTokenService fakeSts = mock(AWSSecurityTokenService.class);
-    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(fakeSts);
+    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
     AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
-    GetCallerIdentityResult fakeStsResult = mock(GetCallerIdentityResult.class);
-    when(fakeSts.getCallerIdentity(any(GetCallerIdentityRequest.class))).thenReturn(fakeStsResult);
-    when(fakeStsResult.getAccount()).thenReturn(AWS_ACCOUNT_ID);
-    when(fakeStsResult.getArn()).thenReturn(ARN);
+    GetCallerIdentityResult stsResult = mock(GetCallerIdentityResult.class);
+    when(sts.getCallerIdentity(any(GetCallerIdentityRequest.class))).thenReturn(stsResult);
+    when(stsResult.getAccount()).thenReturn(AWS_ACCOUNT_ID);
+    when(stsResult.getArn()).thenReturn(ARN);
     assertThrows(SaslAuthenticationException.class,
         () -> saslServer.evaluateResponse(saslMessage(FAKE_ARN, ARN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)));
   }
 
   @Test
   public void authorizationSucceedsWithValidKeysAndSession() {
-    AWSSecurityTokenService fakeSts = mock(AWSSecurityTokenService.class);
-    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(fakeSts);
+    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
     AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
-    GetCallerIdentityResult fakeStsResult = mock(GetCallerIdentityResult.class);
-    when(fakeSts.getCallerIdentity(any(GetCallerIdentityRequest.class))).thenReturn(fakeStsResult);
-    when(fakeStsResult.getAccount()).thenReturn(AWS_ACCOUNT_ID);
-    when(fakeStsResult.getArn()).thenReturn(ARN);
+    GetCallerIdentityResult stsResult = mock(GetCallerIdentityResult.class);
+    when(sts.getCallerIdentity(any(GetCallerIdentityRequest.class))).thenReturn(stsResult);
+    when(stsResult.getAccount()).thenReturn(AWS_ACCOUNT_ID);
+    when(stsResult.getArn()).thenReturn(ARN);
     byte[] nextChallenge = saslServer
         .evaluateResponse(saslMessage(ARN, ARN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN));
     assertEquals(0, nextChallenge.length);
@@ -170,11 +156,10 @@ public class AwsIamSaslServerTest {
 
   @Test()
   public void authorizationFailsForInvalidSession() throws Exception {
-    AWSSecurityTokenService fakeSts = mock(AWSSecurityTokenService.class);
-    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(fakeSts);
+    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
     AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
-    when(fakeSts.getCallerIdentity(any(GetCallerIdentityRequest.class)))
+    when(sts.getCallerIdentity(any(GetCallerIdentityRequest.class)))
         .thenThrow(new SaslAuthenticationException("Invalid session token"));
 
     assertThrows(SaslAuthenticationException.class, () -> saslServer
