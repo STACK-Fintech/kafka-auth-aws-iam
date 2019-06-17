@@ -3,7 +3,7 @@
 This is a custom LoginModule meant to be used with [Kafka](https://kafka.apache.org) and configured
 via [JAAS](https://docs.oracle.com/javase/8/docs/technotes/guides/security/jaas/JAASRefGuide.html).
 
-## Usage
+## Server Setup
 
 Copy the `kafka-auth-aws-iam-{VERSION}.jar` file into your Kafka's `libs` directory.
 Next, create a JAAS configuration file that looks something like this:
@@ -37,4 +37,38 @@ Without this entry, the `SaslServerCallbackhandler` will be used, which will fai
 
 # So, for SASL_SSL, it should be:
 listener.name.sasl_ssl.aws.sasl.server.callback.handler.class=com.stack.security.auth.aws.internal.AwsIamCallbackHandler
+```
+
+## Client Setup
+
+You can use the AwsIamLoginModule for authentication between Kafka Brokers. To do this,
+add an entry to your JAAS configuration for `KafkaClient`:
+
+```
+KafkaClient {
+    com.stack.security.auth.aws.AwsIamLoginModule required;
+};
+```
+
+The `AwsIamSaslClient` leverages the [DefaultAWSCredentialsProviderChain](https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html) to automatically find credentials available for use in
+the environment of your Kafka broker.
+
+Unlike the `AwsIamSaslServer`, the `AwsIamSaslClient` does not use a custom callback so no
+additional wireup is needed in server.properties.
+
+This client can also be used with JAAS-compatible Consumers and Producers, though this hasn't been
+tested.
+
+
+## Build, Test, etc...
+This project uses [Maven](https://maven.apache.org/).
+```
+# Install dependencies
+mvn install
+# Build
+mvn compile
+# Test
+mvn test
+# Package the JAR for use
+mvn package
 ```

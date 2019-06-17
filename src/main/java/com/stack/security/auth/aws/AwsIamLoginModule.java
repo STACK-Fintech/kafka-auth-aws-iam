@@ -7,6 +7,7 @@ import javax.security.auth.Subject;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.spi.LoginModule;
 
+import com.stack.security.auth.aws.internal.AwsIamSaslClientProvider;
 import com.stack.security.auth.aws.internal.AwsIamSaslServerProvider;
 
 public class AwsIamLoginModule implements LoginModule {
@@ -18,6 +19,7 @@ public class AwsIamLoginModule implements LoginModule {
 
   static {
     AwsIamSaslServerProvider.initialize();
+    AwsIamSaslClientProvider.initialize();
   }
 
   @Override

@@ -60,18 +60,6 @@ public class AwsIamSaslServer implements SaslServer {
    */
   @Override
   public byte[] evaluateResponse(byte[] responseBytes) throws SaslAuthenticationException {
-    /*
-     * Message format (from https://tools.ietf.org/html/rfc4616):
-     *
-     * message = [authzid] UTF8NUL authcid UTF8NUL passwd authcid = 1*SAFE ; MUST
-     * accept up to 255 octets authzid = 1*SAFE ; MUST accept up to 255 octets
-     * passwd = 1*SAFE ; MUST accept up to 255 octets UTF8NUL = %x00 ; UTF-8 encoded
-     * NUL character
-     *
-     * SAFE = UTF1 / UTF2 / UTF3 / UTF4 ;; any UTF-8 encoded Unicode character
-     * except NUL
-     */
-
     String response = new String(responseBytes, StandardCharsets.UTF_8);
     List<String> tokens = extractTokens(response);
     String authorizationIdFromClient = tokens.get(0);
@@ -97,8 +85,8 @@ public class AwsIamSaslServer implements SaslServer {
     }
 
     NameCallback nameCallback = new NameCallback("arn", arn);
-    AwsIamAuthenticateCallback authenticateCallback = new AwsIamAuthenticateCallback(accessKeyId.toCharArray(),
-        secretAccessKey.toCharArray(), sessionToken.toCharArray());
+    AwsIamAuthenticateCallback authenticateCallback = new AwsIamAuthenticateCallback(accessKeyId, secretAccessKey,
+        sessionToken);
     try {
       callbackHandler.handle(new Callback[] { nameCallback, authenticateCallback });
     } catch (Throwable e) {
@@ -123,7 +111,10 @@ public class AwsIamSaslServer implements SaslServer {
     for (int i = 0; i < 6; ++i) {
       int endIndex = string.indexOf("\u0000", startIndex);
       if (endIndex == -1) {
-        tokens.add(string.substring(startIndex));
+        String remaining = string.substring(startIndex);
+        if (!remaining.equals("")) {
+          tokens.add(remaining);
+        }
         break;
       }
       tokens.add(string.substring(startIndex, endIndex));

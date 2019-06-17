@@ -24,31 +24,44 @@ public class AwsIamAuthenticateCallback implements Callback {
    *                        SASL/AWS authentication
    * @return
    */
-  public AwsIamAuthenticateCallback(char[] accessKeyId, char[] secretAccessKey, char[] sessionToken) {
-    this.accessKeyId = accessKeyId;
-    this.secretAccessKey = secretAccessKey;
-    this.sessionToken = sessionToken;
+  public AwsIamAuthenticateCallback(String accessKeyId, String secretAccessKey, String sessionToken) {
+    setAccessKeyId(accessKeyId);
+    setSecretAccessKey(secretAccessKey);
+    this.secretAccessKey = secretAccessKey.toCharArray();
+    this.sessionToken = sessionToken.toCharArray();
   }
 
   /**
    * Returns the AWS Access Key ID provided by the client during SASL/AWS
    */
-  public char[] accessKeyId() {
+  public char[] getAccessKeyId() {
     return accessKeyId;
   }
 
   /**
    * Returns the AWS Secret Access Key provided by the client during SASL/AWS
    */
-  public char[] secretAccessKey() {
+  public char[] getSecretAccessKey() {
     return secretAccessKey;
   }
 
   /**
    * Returns the AWS Session Token provided by the client during SASL/AWS
    */
-  public char[] sessionToken() {
+  public char[] getSessionToken() {
     return sessionToken;
+  }
+
+  public void setAccessKeyId(String accessKeyId) {
+    this.accessKeyId = accessKeyId.toCharArray();
+  }
+
+  public void setSecretAccessKey(String secretAccessKey) {
+    this.secretAccessKey = secretAccessKey.toCharArray();
+  }
+
+  public void setSessionToken(String sessionToken) {
+    this.sessionToken = sessionToken.toCharArray();
   }
 
   /**

@@ -30,7 +30,7 @@ import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
-import com.stack.security.auth.aws.internal.AwsIamCallbackHandler;
+import com.stack.security.auth.aws.internal.AwsIamServerCallbackHandler;
 import com.stack.security.auth.aws.internal.AwsIamSaslServer;
 import com.stack.security.authenticator.FakeJaasConfig;
 
@@ -72,7 +72,7 @@ public class AwsIamSaslServerTest {
 
   @Test
   public void emptyTokens() {
-    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(builder);
+    AwsIamServerCallbackHandler callbackHandler = new AwsIamServerCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
     AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
     Exception e = assertThrows(SaslAuthenticationException.class,
@@ -110,13 +110,13 @@ public class AwsIamSaslServerTest {
     assertEquals("Invalid SASL/AWS response: expected 4 or 5 tokens, got 6", e.getMessage());
 
     e = assertThrows(SaslAuthenticationException.class, () -> saslServer.evaluateResponse(
-        String.format("%s%s%s%s", ARN, nul, ARN, nul, AWS_ACCESS_KEY_ID, nul).getBytes(StandardCharsets.UTF_8)));
+        String.format("%s%s%s%s%s%s", ARN, nul, ARN, nul, AWS_ACCESS_KEY_ID, nul).getBytes(StandardCharsets.UTF_8)));
     assertEquals("Invalid SASL/AWS response: expected 4 or 5 tokens, got 3", e.getMessage());
   }
 
   @Test
   public void authorizationSucceedsWithValidKeys() {
-    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(builder);
+    AwsIamServerCallbackHandler callbackHandler = new AwsIamServerCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
     AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
     GetCallerIdentityResult stsResult = mock(GetCallerIdentityResult.class);
@@ -129,7 +129,7 @@ public class AwsIamSaslServerTest {
 
   @Test
   public void authorizationFailsForWrongAuthorizationId() {
-    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(builder);
+    AwsIamServerCallbackHandler callbackHandler = new AwsIamServerCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
     AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
     GetCallerIdentityResult stsResult = mock(GetCallerIdentityResult.class);
@@ -142,7 +142,7 @@ public class AwsIamSaslServerTest {
 
   @Test
   public void authorizationSucceedsWithValidKeysAndSession() {
-    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(builder);
+    AwsIamServerCallbackHandler callbackHandler = new AwsIamServerCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
     AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
     GetCallerIdentityResult stsResult = mock(GetCallerIdentityResult.class);
@@ -156,7 +156,7 @@ public class AwsIamSaslServerTest {
 
   @Test()
   public void authorizationFailsForInvalidSession() throws Exception {
-    AwsIamCallbackHandler callbackHandler = new AwsIamCallbackHandler(builder);
+    AwsIamServerCallbackHandler callbackHandler = new AwsIamServerCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
     AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
     when(sts.getCallerIdentity(any(GetCallerIdentityRequest.class)))

@@ -41,18 +41,18 @@ import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
 import com.stack.security.auth.aws.AwsIamAuthenticateCallback;
 import com.stack.security.auth.aws.AwsIamLoginModule;
 
-public class AwsIamCallbackHandler implements AuthenticateCallbackHandler {
+public class AwsIamServerCallbackHandler implements AuthenticateCallbackHandler {
 
   private AWSSecurityTokenServiceClientBuilder builder;
 
-  public AwsIamCallbackHandler(AWSSecurityTokenServiceClientBuilder builder) {
+  public AwsIamServerCallbackHandler(AWSSecurityTokenServiceClientBuilder builder) {
     // Allow injection of STS instance for testing
     if (builder != null) {
       this.builder = builder;
     }
   }
 
-  public AwsIamCallbackHandler() {
+  public AwsIamServerCallbackHandler() {
     this.builder = AWSSecurityTokenServiceClientBuilder.standard();
   }
 
@@ -72,8 +72,8 @@ public class AwsIamCallbackHandler implements AuthenticateCallbackHandler {
         arn = ((NameCallback) callback).getDefaultName();
       else if (callback instanceof AwsIamAuthenticateCallback) {
         AwsIamAuthenticateCallback awsIamCallback = (AwsIamAuthenticateCallback) callback;
-        boolean authenticated = authenticate(arn, awsIamCallback.accessKeyId(), awsIamCallback.secretAccessKey(),
-            awsIamCallback.sessionToken());
+        boolean authenticated = authenticate(arn, awsIamCallback.getAccessKeyId(), awsIamCallback.getSecretAccessKey(),
+            awsIamCallback.getSessionToken());
         awsIamCallback.authenticated(authenticated);
       } else
         throw new UnsupportedCallbackException(callback);
