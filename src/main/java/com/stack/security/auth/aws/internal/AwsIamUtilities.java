@@ -46,7 +46,7 @@ public final class AwsIamUtilities {
       throw new IllegalArgumentException("'accessKeyId' and 'secretAccessKey' cannot be null!");
     }
 
-    if (accessKeyId.isBlank() || secretAccessKey.isBlank()) {
+    if (accessKeyId.isEmpty() || secretAccessKey.isEmpty()) {
       throw new IllegalArgumentException("'accessKeyId' and 'secretAccessKey' cannot be empty/whitespace!");
     }
 

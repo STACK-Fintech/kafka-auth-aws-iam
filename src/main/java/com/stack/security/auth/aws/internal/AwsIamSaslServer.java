@@ -84,13 +84,13 @@ public class AwsIamSaslServer implements SaslServer {
       sessionToken = "";
     }
 
-    if (authorizationIdFromClient.isBlank()) {
+    if (authorizationIdFromClient.isEmpty()) {
       throw new SaslAuthenticationException("Authentication failed: authorizationId not specified");
     }
-    if (accessKeyId.isBlank()) {
+    if (accessKeyId.isEmpty()) {
       throw new SaslAuthenticationException("Authentication failed: accessKeyId not specified");
     }
-    if (secretAccessKey.isBlank()) {
+    if (secretAccessKey.isEmpty()) {
       throw new SaslAuthenticationException("Authentication failed: secretAccessKey not specified");
     }
 

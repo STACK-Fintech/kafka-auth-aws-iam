@@ -27,7 +27,7 @@ public class AwsIamAuthenticateCallback implements Callback {
   public AwsIamAuthenticateCallback(String accessKeyId, String secretAccessKey, String sessionToken) {
     setAccessKeyId(accessKeyId);
     setSecretAccessKey(secretAccessKey);
-    if (sessionToken != null && !sessionToken.isBlank()) {
+    if (sessionToken != null && !sessionToken.isEmpty()) {
       setSessionToken(sessionToken);
     }
   }

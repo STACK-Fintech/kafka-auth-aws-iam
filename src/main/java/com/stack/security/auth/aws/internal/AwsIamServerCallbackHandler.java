@@ -17,10 +17,6 @@
 
 package com.stack.security.auth.aws.internal;
 
-import org.apache.kafka.common.security.JaasContext;
-import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler;
-import org.apache.kafka.common.KafkaException;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -30,16 +26,14 @@ import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
 import javax.security.auth.login.AppConfigurationEntry;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
-import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
 import com.stack.security.auth.aws.AwsIamAuthenticateCallback;
 import com.stack.security.auth.aws.AwsIamLoginModule;
+
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.security.JaasContext;
+import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler;
 
 public class AwsIamServerCallbackHandler implements AuthenticateCallbackHandler {
 
@@ -93,7 +87,7 @@ public class AwsIamServerCallbackHandler implements AuthenticateCallbackHandler 
     String secretAccessKeyString = new String(secretAccessKey);
     String sessionTokenString = sessionToken == null ? "" : new String(sessionToken);
 
-    if (authorizationId.isBlank() || accessKeyIdString.isBlank() || secretAccessKeyString.isBlank()) {
+    if (authorizationId.isEmpty() || accessKeyIdString.isEmpty() || secretAccessKeyString.isEmpty()) {
       return false;
     }
     // As an added measure of safety, the server can specify what AWS Account ID it
