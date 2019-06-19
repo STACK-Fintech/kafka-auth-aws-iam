@@ -17,11 +17,8 @@ import javax.security.sasl.SaslException;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProviderChain;
 import com.amazonaws.auth.AWSSessionCredentials;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
-import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
 
 public class AwsIamSaslClient implements SaslClient {
@@ -35,8 +32,7 @@ public class AwsIamSaslClient implements SaslClient {
   protected ScheduledExecutorService executor;
 
   protected CallbackHandler cbh;
-  protected String authorizationID; // Should be the ARN
-  protected String authenticationID; // Should also be the ARN
+  protected String authorizationID; // The Unique UserId from AWS STS
   protected byte[] accessKeyId;
   protected byte[] secretAccessKey;
   protected byte[] sessionToken;
@@ -111,20 +107,15 @@ public class AwsIamSaslClient implements SaslClient {
   // client.
   private void setCredentials(AWSCredentials credentials) {
     // Use the STS service to find the ARN of our own credentials.
-    // The ARN is our User principal for Kafka, so we need to provide it.
     // NOTE: The server will independently verify with AWS!
-    AWSSecurityTokenService service = this.stsBuilder.withCredentials(new AWSStaticCredentialsProvider(credentials))
-        .build();
-    GetCallerIdentityResult result = service.getCallerIdentity(new GetCallerIdentityRequest());
-    // They're the same thing.
-    this.authenticationID = this.authorizationID = result.getArn();
+    GetCallerIdentityResult result = AwsIamUtilities.getCallerIdentity(stsBuilder, credentials);
+    this.authorizationID = AwsIamUtilities.getUniqueIdentity(result);
     this.accessKeyId = credentials.getAWSAccessKeyId().getBytes(UTF_8);
     this.secretAccessKey = credentials.getAWSSecretKey().getBytes(UTF_8);
     if (credentials instanceof AWSSessionCredentials) {
       AWSSessionCredentials sessionCreds = (AWSSessionCredentials) credentials;
       this.sessionToken = sessionCreds.getSessionToken().getBytes(UTF_8);
     }
-    service.shutdown();
     credentials = null;
   }
 
@@ -138,8 +129,7 @@ public class AwsIamSaslClient implements SaslClient {
     }
 
     try {
-      byte[] authz = (authorizationID != null) ? authorizationID.getBytes(UTF_8) : null;
-      byte[] auth = authenticationID.getBytes(UTF_8);
+      byte[] authz = authorizationID.getBytes(UTF_8);
 
       /*
        * Answer should be the length of the authentication, authorization (if not
@@ -147,26 +137,15 @@ public class AwsIamSaslClient implements SaslClient {
        * number of null separator bytes between them all.
        */
       byte[] answer;
-      if (sessionToken != null && authz != null) {
-        answer = new byte[accessKeyId.length + secretAccessKey.length + auth.length + authz.length + sessionToken.length
-            + 5];
-      } else if (sessionToken != null) {
-        answer = new byte[accessKeyId.length + secretAccessKey.length + auth.length + sessionToken.length + 4];
-      } else if (authz != null) {
-        answer = new byte[accessKeyId.length + secretAccessKey.length + auth.length + authz.length + 4];
+      if (authz != null && sessionToken != null) {
+        answer = new byte[authz.length + accessKeyId.length + secretAccessKey.length + sessionToken.length + 4];
       } else {
-        answer = new byte[accessKeyId.length + secretAccessKey.length + auth.length + 3];
+        answer = new byte[authz.length + accessKeyId.length + secretAccessKey.length + 3];
       }
 
       int pos = 0;
-      if (authz != null) {
-        System.arraycopy(authz, 0, answer, 0, authz.length);
-        pos = authz.length;
-        answer[pos++] = SEP;
-      }
-
-      System.arraycopy(auth, 0, answer, pos, auth.length);
-      pos += auth.length;
+      System.arraycopy(authz, 0, answer, 0, authz.length);
+      pos = authz.length;
       answer[pos++] = SEP;
 
       System.arraycopy(accessKeyId, 0, answer, pos, accessKeyId.length);

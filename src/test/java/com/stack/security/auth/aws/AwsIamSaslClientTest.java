@@ -18,12 +18,10 @@ package com.stack.security.auth.aws;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 import javax.security.auth.callback.CallbackHandler;
@@ -38,12 +36,11 @@ import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
-import com.stack.security.auth.aws.internal.AwsIamServerCallbackHandler;
 import com.stack.security.auth.aws.internal.AwsIamSaslClient;
 import com.stack.security.auth.aws.internal.AwsIamSaslServer;
+import com.stack.security.auth.aws.internal.AwsIamServerCallbackHandler;
 import com.stack.security.authenticator.FakeJaasConfig;
 
-import org.apache.kafka.common.errors.SaslAuthenticationException;
 import org.apache.kafka.common.security.JaasContext;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -53,7 +50,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public class AwsIamSaslClientTest {
-  private static JaasContext clientContext;
+  // private static JaasContext clientContext;
   private static JaasContext serverContext;
 
   static final String FAKE_ARN = "arn:aws:iam::000000000000:user/NotARealUser";
@@ -79,7 +76,8 @@ public class AwsIamSaslClientTest {
     options.put("aws_account_id", AWS_ACCOUNT_ID);
     jaasConfig.addEntry("serverContext", AwsIamLoginModule.class.getName(), options);
     jaasConfig.addEntry("clientContext", AwsIamLoginModule.class.getName(), new HashMap<String, Object>());
-    clientContext = new JaasContext("clientContext", JaasContext.Type.CLIENT, jaasConfig, null);
+    // clientContext = new JaasContext("clientContext", JaasContext.Type.CLIENT,
+    // jaasConfig, null);
     serverContext = new JaasContext("serverContext", JaasContext.Type.SERVER, jaasConfig, null);
     sts = mock(AWSSecurityTokenService.class);
     when(builder.withCredentials(any(AWSStaticCredentialsProvider.class)).build()).thenReturn(sts);
@@ -105,11 +103,11 @@ public class AwsIamSaslClientTest {
     when(chain.getCredentials()).thenReturn(credentials);
     AwsIamServerCallbackHandler callbackHandler = new AwsIamServerCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", serverContext.configurationEntries());
-    AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
+    AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler, builder);
     GetCallerIdentityResult stsResult = mock(GetCallerIdentityResult.class);
-    when(sts.getCallerIdentity(any(GetCallerIdentityRequest.class))).thenReturn(stsResult);
     when(stsResult.getAccount()).thenReturn(AWS_ACCOUNT_ID);
-    when(stsResult.getArn()).thenReturn(ARN);
+    when(stsResult.getUserId()).thenReturn("ATESTUSER");
+    when(sts.getCallerIdentity(any(GetCallerIdentityRequest.class))).thenReturn(stsResult);
 
     AwsIamSaslClient saslClient = new AwsIamSaslClient(handler, builder, chain);
     byte[] result = saslClient.evaluateChallenge(new byte[0]);

@@ -14,7 +14,7 @@ public class AwsIamAuthenticateCallback implements Callback {
   private boolean authenticated;
 
   /**
-   * Creates a callback with the password provided by the client
+   * Creates a callback with the AWS credentials provided by the client
    * 
    * @param accessKeyId     The AWS Access Key ID provided by the client during
    *                        SASL/AWS authentication
@@ -27,8 +27,9 @@ public class AwsIamAuthenticateCallback implements Callback {
   public AwsIamAuthenticateCallback(String accessKeyId, String secretAccessKey, String sessionToken) {
     setAccessKeyId(accessKeyId);
     setSecretAccessKey(secretAccessKey);
-    this.secretAccessKey = secretAccessKey.toCharArray();
-    this.sessionToken = sessionToken.toCharArray();
+    if (sessionToken != null && !sessionToken.isBlank()) {
+      setSessionToken(sessionToken);
+    }
   }
 
   /**

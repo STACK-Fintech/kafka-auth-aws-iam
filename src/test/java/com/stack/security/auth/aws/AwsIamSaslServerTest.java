@@ -46,9 +46,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 public class AwsIamSaslServerTest {
   private static JaasContext jaasContext;
 
-  static final String FAKE_ARN = "arn:aws:iam::000000000000:user/NotARealUser";
-  // These credentials have no access to anything, and are purely for testing!
-  static final String ARN = "arn:aws:iam::000000000000:user/TestUser";
+  static final String FAKE_AUTHZ = "NotARealUser";
+  static final String AUTHZ = "TestUser";
   static final String AWS_ACCESS_KEY_ID = "<fakeKeyId>";
   static final String AWS_SECRET_ACCESS_KEY = "<fakeSecretKey>";
   static final String AWS_SESSION_TOKEN = "<fakeSessionToken>";
@@ -74,109 +73,81 @@ public class AwsIamSaslServerTest {
   public void emptyTokens() {
     AwsIamServerCallbackHandler callbackHandler = new AwsIamServerCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
-    AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
+    AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler, builder);
     Exception e = assertThrows(SaslAuthenticationException.class,
-        () -> saslServer.evaluateResponse(saslMessage("", "", "", "", "")));
-    assertEquals("Authentication failed: arn not specified", e.getMessage());
+        () -> saslServer.evaluateResponse(saslMessage("", "a", "b")));
+    assertEquals("Authentication failed: authorizationId not specified", e.getMessage());
 
-    e = assertThrows(SaslAuthenticationException.class,
-        () -> saslServer.evaluateResponse(saslMessage("", "", "", "p", "")));
-    assertEquals("Authentication failed: arn not specified", e.getMessage());
+    e = assertThrows(SaslAuthenticationException.class, () -> saslServer.evaluateResponse(saslMessage("", "", "p")));
+    assertEquals("Authentication failed: authorizationId not specified", e.getMessage());
 
-    e = assertThrows(SaslAuthenticationException.class,
-        () -> saslServer.evaluateResponse(saslMessage("", "u", "", "", "")));
+    e = assertThrows(SaslAuthenticationException.class, () -> saslServer.evaluateResponse(saslMessage("u", "", "")));
     assertEquals("Authentication failed: accessKeyId not specified", e.getMessage());
 
-    e = assertThrows(SaslAuthenticationException.class,
-        () -> saslServer.evaluateResponse(saslMessage("a", "", "", "", "")));
-    assertEquals("Authentication failed: arn not specified", e.getMessage());
-
-    e = assertThrows(SaslAuthenticationException.class,
-        () -> saslServer.evaluateResponse(saslMessage("a", "", "p", "", "")));
-    assertEquals("Authentication failed: arn not specified", e.getMessage());
-
-    e = assertThrows(SaslAuthenticationException.class,
-        () -> saslServer.evaluateResponse(saslMessage("a", "u", "", "", "")));
-    assertEquals("Authentication failed: accessKeyId not specified", e.getMessage());
-
-    e = assertThrows(SaslAuthenticationException.class,
-        () -> saslServer.evaluateResponse(saslMessage("a", "u", "o", "", "")));
+    e = assertThrows(SaslAuthenticationException.class, () -> saslServer.evaluateResponse(saslMessage("a", "p", "")));
     assertEquals("Authentication failed: secretAccessKey not specified", e.getMessage());
+
     String nul = "\u0000";
 
     e = assertThrows(SaslAuthenticationException.class,
-        () -> saslServer.evaluateResponse(String.format("%s%s%s%s%s%s%s%s%s%s%s", ARN, nul, ARN, nul, AWS_ACCESS_KEY_ID,
-            nul, AWS_SECRET_ACCESS_KEY, nul, "s", nul, "q").getBytes(StandardCharsets.UTF_8)));
-    assertEquals("Invalid SASL/AWS response: expected 4 or 5 tokens, got 6", e.getMessage());
+        () -> saslServer.evaluateResponse(String.format("%s%s%s%s%s%s%s%s%s%s", AUTHZ, nul, AWS_ACCESS_KEY_ID, nul,
+            AWS_SECRET_ACCESS_KEY, nul, AWS_SESSION_TOKEN, nul, "q", nul).getBytes(StandardCharsets.UTF_8)));
+    assertEquals("Invalid SASL/AWS response: expected 3 or 4 tokens, got 5", e.getMessage());
 
     e = assertThrows(SaslAuthenticationException.class, () -> saslServer.evaluateResponse(
-        String.format("%s%s%s%s%s%s", ARN, nul, ARN, nul, AWS_ACCESS_KEY_ID, nul).getBytes(StandardCharsets.UTF_8)));
-    assertEquals("Invalid SASL/AWS response: expected 4 or 5 tokens, got 3", e.getMessage());
+        String.format("%s%s%s%s", AUTHZ, nul, AWS_ACCESS_KEY_ID, nul).getBytes(StandardCharsets.UTF_8)));
+    assertEquals("Invalid SASL/AWS response: expected 3 or 4 tokens, got 2", e.getMessage());
   }
 
   @Test
   public void authorizationSucceedsWithValidKeys() {
     AwsIamServerCallbackHandler callbackHandler = new AwsIamServerCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
-    AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
+    AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler, builder);
     GetCallerIdentityResult stsResult = mock(GetCallerIdentityResult.class);
     when(sts.getCallerIdentity(any(GetCallerIdentityRequest.class))).thenReturn(stsResult);
     when(stsResult.getAccount()).thenReturn(AWS_ACCOUNT_ID);
-    when(stsResult.getArn()).thenReturn(ARN);
+    when(stsResult.getUserId()).thenReturn(AUTHZ);
 
-    saslServer.evaluateResponse(saslMessage(ARN, ARN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY));
+    saslServer.evaluateResponse(saslMessage(AUTHZ, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY));
   }
 
   @Test
   public void authorizationFailsForWrongAuthorizationId() {
     AwsIamServerCallbackHandler callbackHandler = new AwsIamServerCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
-    AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
+    AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler, builder);
     GetCallerIdentityResult stsResult = mock(GetCallerIdentityResult.class);
     when(sts.getCallerIdentity(any(GetCallerIdentityRequest.class))).thenReturn(stsResult);
-    when(stsResult.getAccount()).thenReturn(AWS_ACCOUNT_ID);
-    when(stsResult.getArn()).thenReturn(ARN);
+    when(stsResult.getUserId()).thenReturn(AUTHZ);
     assertThrows(SaslAuthenticationException.class,
-        () -> saslServer.evaluateResponse(saslMessage(FAKE_ARN, ARN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)));
+        () -> saslServer.evaluateResponse(saslMessage(FAKE_AUTHZ, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)));
   }
 
   @Test
   public void authorizationSucceedsWithValidKeysAndSession() {
     AwsIamServerCallbackHandler callbackHandler = new AwsIamServerCallbackHandler(builder);
     callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
-    AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
+    AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler, builder);
     GetCallerIdentityResult stsResult = mock(GetCallerIdentityResult.class);
     when(sts.getCallerIdentity(any(GetCallerIdentityRequest.class))).thenReturn(stsResult);
     when(stsResult.getAccount()).thenReturn(AWS_ACCOUNT_ID);
-    when(stsResult.getArn()).thenReturn(ARN);
+    when(stsResult.getUserId()).thenReturn(AUTHZ);
     byte[] nextChallenge = saslServer
-        .evaluateResponse(saslMessage(ARN, ARN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN));
+        .evaluateResponse(saslMessage(AUTHZ, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN));
     assertEquals(0, nextChallenge.length);
   }
 
-  @Test()
-  public void authorizationFailsForInvalidSession() throws Exception {
-    AwsIamServerCallbackHandler callbackHandler = new AwsIamServerCallbackHandler(builder);
-    callbackHandler.configure(null, "AWS", jaasContext.configurationEntries());
-    AwsIamSaslServer saslServer = new AwsIamSaslServer(callbackHandler);
-    when(sts.getCallerIdentity(any(GetCallerIdentityRequest.class)))
-        .thenThrow(new SaslAuthenticationException("Invalid session token"));
-
-    assertThrows(SaslAuthenticationException.class, () -> saslServer
-        .evaluateResponse(saslMessage(ARN, ARN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, "totallyBogusToken")));
-  }
-
-  private byte[] saslMessage(String authorizationId, String arn, String accessKeyId, String secretAccessKey) {
+  private byte[] saslMessage(String authorizationId, String accessKeyId, String secretAccessKey) {
     String nul = "\u0000";
-    String message = String.format("%s%s%s%s%s%s%s", authorizationId, nul, arn, nul, accessKeyId, nul, secretAccessKey);
+    String message = String.format("%s%s%s%s%s%s", authorizationId, nul, accessKeyId, nul, secretAccessKey, nul);
     return message.getBytes(StandardCharsets.UTF_8);
   }
 
-  private byte[] saslMessage(String authorizationId, String arn, String accessKeyId, String secretAccessKey,
-      String sessionToken) {
+  private byte[] saslMessage(String authorizationId, String accessKeyId, String secretAccessKey, String sessionToken) {
     String nul = "\u0000";
-    String message = String.format("%s%s%s%s%s%s%s%s%s", authorizationId, nul, arn, nul, accessKeyId, nul,
-        secretAccessKey, nul, sessionToken);
+    String message = String.format("%s%s%s%s%s%s%s%s", authorizationId, nul, accessKeyId, nul, secretAccessKey, nul,
+        sessionToken, nul);
     return message.getBytes(StandardCharsets.UTF_8);
   }
 }

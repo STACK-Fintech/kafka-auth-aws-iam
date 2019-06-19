@@ -66,51 +66,48 @@ public class AwsIamServerCallbackHandler implements AuthenticateCallbackHandler 
 
   @Override
   public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
-    String arn = null;
+    String authorizationId = null;
     for (Callback callback : callbacks) {
       if (callback instanceof NameCallback)
-        arn = ((NameCallback) callback).getDefaultName();
+        authorizationId = ((NameCallback) callback).getDefaultName();
       else if (callback instanceof AwsIamAuthenticateCallback) {
         AwsIamAuthenticateCallback awsIamCallback = (AwsIamAuthenticateCallback) callback;
-        boolean authenticated = authenticate(arn, awsIamCallback.getAccessKeyId(), awsIamCallback.getSecretAccessKey(),
-            awsIamCallback.getSessionToken());
+        boolean authenticated = authenticate(authorizationId, awsIamCallback.getAccessKeyId(),
+            awsIamCallback.getSecretAccessKey(), awsIamCallback.getSessionToken());
         awsIamCallback.authenticated(authenticated);
       } else
         throw new UnsupportedCallbackException(callback);
     }
   }
 
-  protected boolean authenticate(String arn, char[] accessKeyId, char[] secretAccessKey, char[] sessionToken) {
+  protected boolean authenticate(String authorizationId, char[] accessKeyId, char[] secretAccessKey,
+      char[] sessionToken) {
 
-    // At a minimum, the ARN, Access Key ID and Secret Access Key MUST be defined!
-    if (arn == null || accessKeyId == null || secretAccessKey == null) {
+    // At a minimum, the authorizationId, Access Key ID and Secret Access Key MUST
+    // be defined!
+    if (authorizationId == null || accessKeyId == null || secretAccessKey == null) {
       return false;
     }
 
-    AWSCredentials awsCreds;
     String accessKeyIdString = new String(accessKeyId);
     String secretAccessKeyString = new String(secretAccessKey);
-    String sessionTokenString = new String(sessionToken);
+    String sessionTokenString = sessionToken == null ? "" : new String(sessionToken);
 
-    if (!sessionTokenString.isEmpty()) {
-      awsCreds = new BasicSessionCredentials(accessKeyIdString, secretAccessKeyString, sessionTokenString);
-    } else {
-      awsCreds = new BasicAWSCredentials(accessKeyIdString, secretAccessKeyString);
+    if (authorizationId.isBlank() || accessKeyIdString.isBlank() || secretAccessKeyString.isBlank()) {
+      return false;
     }
-    AWSSecurityTokenService service = builder.withCredentials(new AWSStaticCredentialsProvider(awsCreds)).build();
     // As an added measure of safety, the server can specify what AWS Account ID it
     // expects to see as a part of the caller's identity.
     String expectedAwsAccountId = JaasContext.configEntryOption(jaasConfigEntries, AWS_ACCOUNT_ID,
         AwsIamLoginModule.class.getName());
 
     // Check the credentials with AWS STS and GetCallerIdentity.
-
-    GetCallerIdentityRequest request = new GetCallerIdentityRequest();
-    GetCallerIdentityResult result = service.getCallerIdentity(request);
+    GetCallerIdentityResult result = AwsIamUtilities.getCallerIdentity(builder, accessKeyIdString,
+        secretAccessKeyString, sessionTokenString);
 
     // Both the ARN returned by the credentials, and the configured account ID need
     // to match!
-    if (result.getArn().equals(arn) && result.getAccount().equals(expectedAwsAccountId)) {
+    if (result.getUserId().equals(authorizationId) && result.getAccount().equals(expectedAwsAccountId)) {
       return true;
     } else {
       return false;

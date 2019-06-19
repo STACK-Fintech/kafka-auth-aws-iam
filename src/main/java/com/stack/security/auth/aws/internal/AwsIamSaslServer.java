@@ -15,10 +15,11 @@ import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslServerFactory;
 
+import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
+import com.stack.security.auth.aws.AwsIamAuthenticateCallback;
+
 import org.apache.kafka.common.errors.SaslAuthenticationException;
 import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler;
-
-import com.stack.security.auth.aws.AwsIamAuthenticateCallback;
 
 /**
  * Simple SaslServer implementation for SASL/AWS. Checks the provided AWS
@@ -31,6 +32,7 @@ public class AwsIamSaslServer implements SaslServer {
   public static final String AWS_MECHANISM = "AWS";
 
   private final AuthenticateCallbackHandler callbackHandler;
+  private AWSSecurityTokenServiceClientBuilder builder;
   private boolean complete;
   private String authorizationId;
 
@@ -39,6 +41,15 @@ public class AwsIamSaslServer implements SaslServer {
       throw new IllegalArgumentException(String.format("Callback handler must be castable to %s: %s",
           AuthenticateCallbackHandler.class.getName(), callbackHandler.getClass().getName()));
     this.callbackHandler = (AuthenticateCallbackHandler) callbackHandler;
+  }
+
+  /**
+   * This overload is primarily for testing purposes (as a passthrough for the
+   * AwsIamUtilities call).
+   */
+  public AwsIamSaslServer(CallbackHandler callbackHandler, AWSSecurityTokenServiceClientBuilder builder) {
+    this(callbackHandler);
+    this.builder = builder;
   }
 
   /**
@@ -63,28 +74,27 @@ public class AwsIamSaslServer implements SaslServer {
     String response = new String(responseBytes, StandardCharsets.UTF_8);
     List<String> tokens = extractTokens(response);
     String authorizationIdFromClient = tokens.get(0);
-    String arn = tokens.get(1);
-    String accessKeyId = tokens.get(2);
-    String secretAccessKey = tokens.get(3);
+    String accessKeyId = tokens.get(1);
+    String secretAccessKey = tokens.get(2);
     String sessionToken;
     try {
-      sessionToken = tokens.get(4);
+      sessionToken = tokens.get(3);
     } catch (Throwable e) {
       // Ignore the exception, just set the token to empty string.
       sessionToken = "";
     }
 
-    if (arn.isEmpty()) {
-      throw new SaslAuthenticationException("Authentication failed: arn not specified");
+    if (authorizationIdFromClient.isBlank()) {
+      throw new SaslAuthenticationException("Authentication failed: authorizationId not specified");
     }
-    if (accessKeyId.isEmpty()) {
+    if (accessKeyId.isBlank()) {
       throw new SaslAuthenticationException("Authentication failed: accessKeyId not specified");
     }
-    if (secretAccessKey.isEmpty()) {
+    if (secretAccessKey.isBlank()) {
       throw new SaslAuthenticationException("Authentication failed: secretAccessKey not specified");
     }
 
-    NameCallback nameCallback = new NameCallback("arn", arn);
+    NameCallback nameCallback = new NameCallback("authorizationId", authorizationIdFromClient);
     AwsIamAuthenticateCallback authenticateCallback = new AwsIamAuthenticateCallback(accessKeyId, secretAccessKey,
         sessionToken);
     try {
@@ -95,11 +105,12 @@ public class AwsIamSaslServer implements SaslServer {
     }
     if (!authenticateCallback.authenticated())
       throw new SaslAuthenticationException("Authentication failed: Invalid AWS credentials");
-    if (!authorizationIdFromClient.isEmpty() && !authorizationIdFromClient.equals(arn))
-      throw new SaslAuthenticationException(
-          "Authentication failed: Client requested an authorization id that is different from username");
 
-    this.authorizationId = arn;
+    if (this.builder != null) {
+      this.authorizationId = AwsIamUtilities.getUniqueIdentity(builder, accessKeyId, secretAccessKey, sessionToken);
+    } else {
+      this.authorizationId = AwsIamUtilities.getUniqueIdentity(accessKeyId, secretAccessKey, sessionToken);
+    }
 
     complete = true;
     return new byte[0];
@@ -108,12 +119,14 @@ public class AwsIamSaslServer implements SaslServer {
   private List<String> extractTokens(String string) {
     List<String> tokens = new ArrayList<>();
     int startIndex = 0;
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < 5; ++i) {
       int endIndex = string.indexOf("\u0000", startIndex);
       if (endIndex == -1) {
-        String remaining = string.substring(startIndex);
-        if (!remaining.equals("")) {
-          tokens.add(remaining);
+        if (startIndex < string.length()) {
+          String remaining = string.substring(startIndex);
+          if (!remaining.equals("")) {
+            tokens.add(remaining);
+          }
         }
         break;
       }
@@ -121,8 +134,8 @@ public class AwsIamSaslServer implements SaslServer {
       startIndex = endIndex + 1;
     }
 
-    if (tokens.size() < 4 || tokens.size() > 5)
-      throw new SaslAuthenticationException("Invalid SASL/AWS response: expected 4 or 5 tokens, got " + tokens.size());
+    if (tokens.size() < 3 || tokens.size() > 4)
+      throw new SaslAuthenticationException("Invalid SASL/AWS response: expected 3 or 4 tokens, got " + tokens.size());
 
     return tokens;
   }
