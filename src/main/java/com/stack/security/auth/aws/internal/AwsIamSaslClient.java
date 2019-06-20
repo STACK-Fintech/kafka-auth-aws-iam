@@ -208,17 +208,21 @@ public class AwsIamSaslClient implements SaslClient {
   }
 
   private void clearCredentials() {
-    for (int i = 0; i < accessKeyId.length; i++) {
-      accessKeyId[i] = (byte) 0;
-    }
-    accessKeyId = null;
+    if (accessKeyId != null) {
+      for (int i = 0; i < accessKeyId.length; i++) {
+        accessKeyId[i] = (byte) 0;
+      }
+      accessKeyId = null;
 
-    for (int i = 0; i < secretAccessKey.length; i++) {
-      secretAccessKey[i] = (byte) 0;
     }
-    secretAccessKey = null;
 
-    // Session token isn't required, so check before trying to zero it out!
+    if (secretAccessKey != null) {
+      for (int i = 0; i < secretAccessKey.length; i++) {
+        secretAccessKey[i] = (byte) 0;
+      }
+      secretAccessKey = null;
+    }
+
     if (sessionToken != null && sessionToken.length > 0) {
       for (int i = 0; i < sessionToken.length; i++) {
         sessionToken[i] = (byte) 0;
