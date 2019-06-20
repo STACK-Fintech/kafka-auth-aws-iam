@@ -72,3 +72,8 @@ mvn test
 # Package the JAR for use
 mvn package
 ```
+
+-----
+Built with :heart: by
+
+<a href="https://www.getstack.ca/"><img src="https://s3.ca-central-1.amazonaws.com/images.getstack.ca/static/logo--stack--black.png"  width="130px" /></a>
