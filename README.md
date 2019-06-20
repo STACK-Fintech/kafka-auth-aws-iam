@@ -3,6 +3,10 @@
 This is a custom LoginModule meant to be used with [Kafka](https://kafka.apache.org) and configured
 via [JAAS](https://docs.oracle.com/javase/8/docs/technotes/guides/security/jaas/JAASRefGuide.html).
 
+## Special Thanks
+A shoutout to @CookPete for creating [auto-changelog](https://github.com/CookPete/auto-changelog),
+which is used to build the CHANGELOG for this plugin!
+
 ## Server Setup
 
 Copy the `kafka-auth-aws-iam-{VERSION}.jar` file into your Kafka's `libs` directory.
