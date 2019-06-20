@@ -34,8 +34,12 @@ import com.stack.security.auth.aws.AwsIamLoginModule;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.security.JaasContext;
 import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AwsIamServerCallbackHandler implements AuthenticateCallbackHandler {
+
+  private final Logger log = LoggerFactory.getLogger(AwsIamServerCallbackHandler.class);
 
   private AWSSecurityTokenServiceClientBuilder builder;
 
@@ -95,17 +99,25 @@ public class AwsIamServerCallbackHandler implements AuthenticateCallbackHandler 
     String expectedAwsAccountId = JaasContext.configEntryOption(jaasConfigEntries, AWS_ACCOUNT_ID,
         AwsIamLoginModule.class.getName());
 
-    // Check the credentials with AWS STS and GetCallerIdentity.
-    GetCallerIdentityResult result = AwsIamUtilities.getCallerIdentity(builder, accessKeyIdString,
-        secretAccessKeyString, sessionTokenString);
+    try {
+      // Check the credentials with AWS STS and GetCallerIdentity.
+      GetCallerIdentityResult result = AwsIamUtilities.getCallerIdentity(builder, accessKeyIdString,
+          secretAccessKeyString, sessionTokenString);
+      String userId = AwsIamUtilities.getUniqueIdentity(result);
 
-    // Both the ARN returned by the credentials, and the configured account ID need
-    // to match!
-    if (result.getUserId().equals(authorizationId) && result.getAccount().equals(expectedAwsAccountId)) {
-      return true;
-    } else {
+      // Both the ARN returned by the credentials, and the configured account ID need
+      // to match!
+      log.trace(String.format("UserId: expected '%s', received '%s'", authorizationId, userId));
+      if (userId.equals(authorizationId) && result.getAccount().equals(expectedAwsAccountId)) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (Throwable e) {
+      log.debug(String.format("Error during authentication: %s", e.getMessage()));
       return false;
     }
+
   }
 
   @Override

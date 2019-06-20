@@ -20,6 +20,8 @@ import com.stack.security.auth.aws.AwsIamAuthenticateCallback;
 
 import org.apache.kafka.common.errors.SaslAuthenticationException;
 import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Simple SaslServer implementation for SASL/AWS. Checks the provided AWS
@@ -29,6 +31,7 @@ import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler;
  */
 public class AwsIamSaslServer implements SaslServer {
 
+  private final Logger log = LoggerFactory.getLogger(AwsIamSaslServer.class);
   public static final String AWS_MECHANISM = "AWS";
 
   private final AuthenticateCallbackHandler callbackHandler;
@@ -103,14 +106,16 @@ public class AwsIamSaslServer implements SaslServer {
       e.printStackTrace(System.out);
       throw new SaslAuthenticationException("Authentication failed: credentials for user could not be verified", e);
     }
-    if (!authenticateCallback.authenticated())
+    if (!authenticateCallback.authenticated()) {
       throw new SaslAuthenticationException("Authentication failed: Invalid AWS credentials");
+    }
 
     if (this.builder != null) {
       this.authorizationId = AwsIamUtilities.getUniqueIdentity(builder, accessKeyId, secretAccessKey, sessionToken);
     } else {
       this.authorizationId = AwsIamUtilities.getUniqueIdentity(accessKeyId, secretAccessKey, sessionToken);
     }
+    log.debug("Login successful, authorizationId of user: " + this.authorizationId);
 
     complete = true;
     return new byte[0];
