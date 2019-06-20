@@ -105,10 +105,13 @@ public class AwsIamServerCallbackHandler implements AuthenticateCallbackHandler 
           secretAccessKeyString, sessionTokenString);
       String userId = AwsIamUtilities.getUniqueIdentity(result);
 
+      // If the authorizationId has a session appended to it, we want to ignore it.
+      String authorizationIdWithoutSession = authorizationId.split(":")[0];
+
       // Both the ARN returned by the credentials, and the configured account ID need
       // to match!
       log.trace(String.format("UserId: expected '%s', received '%s'", authorizationId, userId));
-      if (userId.equals(authorizationId) && result.getAccount().equals(expectedAwsAccountId)) {
+      if (userId.equals(authorizationIdWithoutSession) && result.getAccount().equals(expectedAwsAccountId)) {
         return true;
       } else {
         return false;

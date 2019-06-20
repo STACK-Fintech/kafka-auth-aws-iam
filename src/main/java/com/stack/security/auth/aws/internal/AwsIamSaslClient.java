@@ -91,7 +91,7 @@ public class AwsIamSaslClient implements SaslClient {
       }
     };
 
-    executor.scheduleAtFixedRate(periodicTask, 0, period, unit);
+    executor.scheduleAtFixedRate(periodicTask, period, period, unit);
   }
 
   @Override
@@ -106,10 +106,17 @@ public class AwsIamSaslClient implements SaslClient {
   // Parse the AWSCredentials object into the appropriate byte arrays on the
   // client.
   private void setCredentials(AWSCredentials credentials) {
-    // Use the STS service to find the ARN of our own credentials.
+    // Use the STS service to find the UserId/RoleId of our own credentials.
     // NOTE: The server will independently verify with AWS!
     GetCallerIdentityResult result = AwsIamUtilities.getCallerIdentity(stsBuilder, credentials);
-    this.authorizationID = AwsIamUtilities.getUniqueIdentity(result);
+    /**
+     * XXX(Kev): Originally, this code stripped the session information off the
+     * userId. I've removed it to ensure that the server is properly parsing this
+     * information. Clients written in other languages might not strip this
+     * information, and it could be useful in the future for things like audit
+     * logging and such, so encouraging its removal seems unnecessary at best.
+     */
+    this.authorizationID = result.getUserId();
     this.accessKeyId = credentials.getAWSAccessKeyId().getBytes(UTF_8);
     this.secretAccessKey = credentials.getAWSSecretKey().getBytes(UTF_8);
     if (credentials instanceof AWSSessionCredentials) {
