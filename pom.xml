@@ -5,7 +5,7 @@
 
   <groupId>com.stack.security.auth.aws</groupId>
   <artifactId>kafka-auth-aws-iam</artifactId>
-  <version>0.5.0</version>
+  <version>0.5.1</version>
   <packaging>jar</packaging>
   <properties>
     <maven.compiler.source>8</maven.compiler.source>
