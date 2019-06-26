@@ -31,15 +31,21 @@ export KAFKA_OPTS="-Djava.security.auth.login.config=./config/server-jaas.conf"
 bin/kafka-server-start.sh config/server.properties
 ```
 
-Last, in server.properties, you'll need to add an entry for the callback handler class.
-Without this entry, the `SaslServerCallbackhandler` will be used, which will fail!
+Last, in server.properties, you'll need to add:
+- an entry for the callback handler class
+- the selected SASL mechanism
+- a list of enabled SASL mechanisms
 
 ```
 # server.properties
 
-# Should follow the format: listener.name {listener}.aws.sasl.server.callback.handler=com.stack.security.auth.aws.internal.AwsIamCallbackHandler
+sasl.mechanism=AWS
+# You can add other mechanisms as necessary
+sasl.enabled.mechanisms=AWS
+# If you want Kafka brokers to communicate securely
+sasl.mechanism.inter.broker.protocol=AWS 
 
-# So, for SASL_SSL, it should be:
+# Should follow the format: listener.name.{listener}.aws.sasl.server.callback.handler=com.stack.security.auth.aws.internal.AwsIamCallbackHandler
 listener.name.sasl_ssl.aws.sasl.server.callback.handler.class=com.stack.security.auth.aws.internal.AwsIamCallbackHandler
 ```
 
